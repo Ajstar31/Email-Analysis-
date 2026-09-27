@@ -1,5 +1,6 @@
 
 #Investigation Complete: Email Header & Phishing Attachment Analysis (CoCanDa Lab)
+
 Platform: BlueTeamLabs Online Category: Email Analysis / Digital Forensics Skills: Email header forensics, SPF/DKIM/DMARC validation, file signature (magic byte) analysis, hex analysis, OSINT
 
  Scenario:
@@ -40,19 +41,27 @@ Received:      emkei.cz (localhost) (93.99.104.210)
 Reply-To:      negeja3921@pashter.com
 Received-SPF:  fail
 
+<img width="1579" height="858" alt="email 1" src="https://github.com/user-attachments/assets/37308ab6-a435-4333-bfea-4caec4024019" />
+
 OSINT on the Sending Infrastructure:
 The originating server, emkei.cz, is a well-known fake mailer / anonymous email service. It's a free web-based tool that lets anyone spoof a "From" address and craft a custom email using an HTML editor, encryption options, and other advanced sending settings. Its appearance in the Received chain — combined with the SPF fail and the microapple.com spoof — confirmed the message was not sent by Apple/Microsoft at all, but forged.
 
 2. Email Body Analysis:
 The body itself was a ransom-style threat directed at the Major, demanding $1 billion USD and referencing the missing CoCanDians, with an attachment presented as proof/instructions.
-The second MIME part of the message was text/plain, Base64-encoded. Rather than just decoding it to text, I converted the decoded output to hex to inspect the raw byte structure — because a file's name and its actual file type are not the same thing, and attackers routinely disguise one as the other.
+The second part of the message was text/plain, Base64-encoded. Rather than just decoding it to text, I converted the decoded output to hex to inspect the raw byte structure  because a file's name and its actual file type are not the same thing, and attackers routinely disguise one as the other.
+
+<img width="800" height="449" alt="Base64 cyberchef" src="https://github.com/user-attachments/assets/32a2f50b-85fd-43e6-83a3-e542422a63d7" />
 
 3. Attachment Analysis — "PuzzleToCoCanDa.pdf" Is Not a PDF
 The very first bytes of the attachment, once viewed in hex, were:
 50 4B 03 04
+<img width="519" height="243" alt="pdf" src="https://github.com/user-attachments/assets/95b331c1-4754-4e29-b1df-d420c1405225" />
 
-Cross-referencing this against the Gary Kessler File Signature Table shows 50 4B 03 04 (PK\x03\x04) is the magic number for a ZIP archive — not a PDF. A genuine PDF should begin with:
-25 50 44 46   →   %PDF
+Cross-referencing this against the Gary Kessler File Signature Table shows 50 4B 03 04 (PK\x03\x04) is the magic number for a ZIP archive 
+ not a PDF. A genuine PDF should begin with:
+25 50 44 46   →   %PDF (HxD app)
+
+<img width="722" height="425" alt="Hiddenfiles" src="https://github.com/user-attachments/assets/8a8a867f-f66d-4417-8be2-1f24a828308c" />
 
 This confirmed the attacker had renamed a ZIP archive with a .pdf extension to make it look harmless and get past casual inspection.
 Unpacking the Archive
@@ -60,10 +69,13 @@ I saved the payload as attachment.zip and extracted it. Inside was a hidden file
 File 1 — no extension / "looked like Excel": Opened the raw bytes in HxD and found:
 FF D8 FF E0
 
+<img width="704" height="420" alt="bound 2 indicate picture jpg" src="https://github.com/user-attachments/assets/20cba2f6-e895-4742-bf55-dc0b66c4e2ef" />
+
 Per Gary Kessler's table, this is the signature for a JPEG image. I renamed the file with a .jpg extension and confirmed it opened correctly as a picture.
 File 2: Bytes in HxD again showed the ZIP signature (50 4B 03 04) rather than a standalone document header. Since this didn't behave as a normal single-format file, I used the online viewer at sqrx.com, which supports opening a wide range of file/container formats directly in the browser, to safely inspect its actual contents without relying on a local, potentially vulnerable application.
 File 3 — the "PDF": Verified separately to confirm it matched a genuine PDF structure and was the intended lure document.
 Note on Office file signatures: it's worth calling out for anyone following this write-up — modern Office formats (.xlsx, .docx, .pptx) are themselves ZIP containers, so seeing PK bytes at the start of a file claiming to be Excel isn't automatically malicious on its own. The suspicious part in this case was the outer file (PuzzleToCoCanDa.pdf) being a ZIP wrapper for a completely different, undisclosed set of documents — that inconsistency between the claimed and actual structure is what mattered.
+<img width="752" height="380" alt="gary kessel" src="https://github.com/user-attachments/assets/10fc3900-22d2-4912-a858-3c488875b687" />
 
  Key Indicators of Compromise (IOCs)
 Indicator
@@ -84,7 +96,7 @@ SPF result
 Fail
 
  Conclusion:
-This investigation confirmed the email was a spoofed phishing/extortion attempt, not a legitimate communication. Three independent lines of evidence supported this:
+This investigation confirmed the email was a spoofed phishing t, not a legitimate communication. Three  lines of evidence supported this:
 The Received-SPF result failed, showing the sending IP was never authorized by the claimed domain.
 The From and Reply-To addresses diverged, a hallmark of spoofing meant to redirect victim responses to an attacker-owned inbox.
 The sending infrastructure traced back to emkei.cz, a publicly known fake-mailer service used to forge sender identities.
